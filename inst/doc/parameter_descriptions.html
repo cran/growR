@@ -347,6 +347,19 @@ C).</p></li>
 gram DV.</p></li>
 <li><p><code>minOMDDR</code> organic matter digestibility in gram per
 gram DR.</p></li>
+<li><p><code>CO2_growth_factor</code> strength of effect of CO2
+concentration on growth. See parameter <em>b</em> in
+[fCO2_growth_mod()].</p></li>
+<li><p><code>crop_coefficient</code> multiplicative factor K<sub>c</sub>
+by which reference evapotranspiration ET<sub>0</sub> has to be
+multiplied to get the crop evapotranspiration ET<sub>c</sub>:
+ET<sub>c</sub> = K<sub>c</sub> ET<sub>0</sub></p></li>
+<li><p><code>senescence_cap</code> fraction c<sub>s</sub> of
+<em>GRO</em> to which <em>SEN</em> is limited:
+SEN<sub>i</sub><sup>max</sup> = c<sub>s</sub> GRO<sub>i</sub> for
+<em>i</em> in <em>GV</em>, <em>GR</em>. Makes it less likely for grass
+population to die out. Can be set to large values in order to
+effectively disable senescence capping.</p></li>
 </ul>
 </div>
 <div id="functional-group-parameters" class="section level3">
@@ -393,20 +406,12 @@ composition.</p></li>
 <li><p><code>DOY</code> day of year in given year</p></li>
 <li><p><code>Ta</code> average temperature of given day
 (Celsius).</p></li>
-<li><p><code>Tmin</code> minimum temperature of given day
-(Celsius).</p></li>
-<li><p><code>Tmax</code> maximum temperature of given day
-(Celsius).</p></li>
 <li><p><code>precip</code> precipitation in millimeter per day.</p></li>
-<li><p><code>rSSD</code> relative sunshine duration (%) <em>apparently
-unused</em>.</p></li>
-<li><p><code>SRad</code> average sunlight irradiance in 1/0.47
-J/s/m<sup>2</sup>. In other words, this value will be converted to
-photosynthetically active radiation (PAR) in MJ/m<sup>2</sup> as:
+<li><p><code>PAR</code> photosynthetically active radiation in
+MJ/m<sup>2</sup>. Can be calculated from average sunlight irradiance
+<code>SRad</code> in J/s/m<sup>2</sup> as:
 <code>PAR = SRad * 0.47 * 24 * 60 * 60 / 1e6</code></p></li>
-<li><p><code>ET0</code> evapotranspiration in mm. Currently calculated
-here. Should be calculated in model from day length.</p></li>
-<li><p><code>snow</code> calculated by model.</p></li>
+<li><p><code>ET0</code> evapotranspiration in mm.</p></li>
 </ul>
 </div>
 </div>

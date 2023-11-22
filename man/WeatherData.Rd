@@ -13,23 +13,20 @@ other words, every variable has one value for each of the 365 of each of
 the \emph{N} years.
 }
 \section{Weather inputs}{
-The weather input file should be organized as 10 space separated columns
-with the following parameters as headers:
+The weather input file should be organized as space separated columns
+with a \code{year} column and at least the following parameters as headers
+(further columns are ignored):
 \itemize{
 \item \code{DOY} day of year in given year
 \item \code{Ta} average temperature of given day (Celsius).
-\item \code{Tmin} minimum temperature of given day (Celsius).
-\item \code{Tmax} maximum temperature of given day (Celsius).
 \item \code{precip} precipitation in millimeter per day.
-\item \code{rSSD} relative sunshine duration (\%) \emph{apparently unused}.
-\item \code{SRad} average sunlight irradiance in 1/0.47 J/s/m^2^. In other words, this
-value will be converted to photosynthetically active radiation (PAR) in
-MJ/m^2^ as: \code{PAR = SRad * 0.47 * 24 * 60 * 60 / 1e6}
-\item \code{ET0} evapotranspiration in mm. Currently calculated here. Should be calculated in model from day length.
-\item \code{snow} calculated by model.
+\item \code{PAR} photosynthetically active radiation in MJ/m^2^. Can be calculated
+from average sunlight irradiance \code{SRad} in J/s/m^2^ as:
+\code{PAR = SRad * 0.47 * 24 * 60 * 60 / 1e6}
+\item \code{ET0} evapotranspiration in mm.
 }
 
-These parameters are stored in this object in the respective PARAM_vec
+These parameters are stored in this object in the respective \code{PARAM_vec}
 fields.
 }
 
@@ -55,12 +52,8 @@ weather data only for a given year. The keys in the list are:
 \item aCO2 (atmospheric CO2 concentration in ppm)
 \item year
 \item DOY
-\item DL (day length \strong{unused})
 \item Ta
 \item Ta_sm (smoothed daily average temperature)
-\item Tn
-\item Tn_sm (smoothed daily minimum temperature)
-\item Tx
 \item PAR
 \item PP
 \item PET
@@ -77,6 +70,7 @@ weather data only for a given year. The keys in the list are:
 \itemize{
 \item \href{#method-WeatherData-new}{\code{WeatherData$new()}}
 \item \href{#method-WeatherData-read_weather}{\code{WeatherData$read_weather()}}
+\item \href{#method-WeatherData-ensure_file_integrity}{\code{WeatherData$ensure_file_integrity()}}
 \item \href{#method-WeatherData-calculate_day_length}{\code{WeatherData$calculate_day_length()}}
 \item \href{#method-WeatherData-get_weather_for_year}{\code{WeatherData$get_weather_for_year()}}
 \item \href{#method-WeatherData-clone}{\code{WeatherData$clone()}}
@@ -124,6 +118,25 @@ Default (NULL) is to read in all found years.}
 }
 }
 \if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-WeatherData-ensure_file_integrity"></a>}}
+\if{latex}{\out{\hypertarget{method-WeatherData-ensure_file_integrity}{}}}
+\subsection{Method \code{ensure_file_integrity()}}{
+Check if supplied input file is formatted correctly.
+
+Check if required column names are present and fix NA entries.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{WeatherData$ensure_file_integrity(weather)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{weather}}{data.table of the read input file with \code{header = TRUE}.}
+}
+\if{html}{\out{</div>}}
+}
+}
+\if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-WeatherData-calculate_day_length"></a>}}
 \if{latex}{\out{\hypertarget{method-WeatherData-calculate_day_length}{}}}
 \subsection{Method \code{calculate_day_length()}}{
@@ -157,6 +170,10 @@ year and return them as a list.
 \item{\code{year}}{integer Year for which to extract weather data.}
 }
 \if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+W List containing the keys aCO2, year, DOY, Ta, Ta_sm, PAR,
+PP, PET, liquidP, melt, snow, ndays.
 }
 }
 \if{html}{\out{<hr>}}

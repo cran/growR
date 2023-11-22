@@ -38,6 +38,16 @@ composition.
 \item \code{KlGR} basic abscission rate GR (dimensionless).
 \item \code{maxOMDDV} organic matter digestibility in gram per gram DV.
 \item \code{minOMDDR} organic matter digestibility in gram per gram DR.
+\item \code{CO2_growth_factor} strength of effect of CO2 concentration on growth. See
+parameter \emph{b} in \code{\link[=fCO2_growth_mod]{fCO2_growth_mod()}}.
+\item \code{crop_coefficient} multiplicative factor K~c~ by which
+reference evapotranspiration ET~0~ has to be multiplied to get the crop
+evapotranspiration ET~c~:
+ET~c~ = K~c~ ET~0~
+\item \code{senescence_cap} fraction c~s~ of \emph{GRO} to which \emph{SEN} is
+limited: SEN~i~^max^ = c~s~ GRO~i~
+for \emph{i} in \emph{GV}, \emph{GR}. Makes it less likely for grass population to die out.
+Can be set to large values in order to effectively disable senescence capping.
 }
 }
 
@@ -95,7 +105,11 @@ vegetation parameters governed by functional group composition.
 \section{Public fields}{
 \if{html}{\out{<div class="r6-fields">}}
 \describe{
-\item{\code{parameter_names}}{Names of all parameters and state variables.}
+\item{\code{required_parameter_names}}{Names of parameters that do not have a
+default value and are therefore strictly required.}
+
+\item{\code{parameter_names}}{Names of all required and optional parameters and
+state variables.}
 
 \item{\code{n_parameters}}{Number of total parameters.}
 
@@ -104,6 +118,8 @@ vegetation parameters.}
 
 \item{\code{fg_parameter_names}}{Names of vegetation parameters defined by the
 functional group composition.}
+
+\item{\code{initial_condition_names}}{Names of initial conditions.}
 
 \item{\code{param_file}}{Name of the parameter file from which initial parameter
 values were read.}
@@ -206,13 +222,12 @@ order to reflect the changes in the parameter list \code{self$P}.
 \if{latex}{\out{\hypertarget{method-ModvegeParameters-check_parameters}{}}}
 \subsection{Method \code{check_parameters()}}{
 Parameter Sanity Check
-
 Ensure that the supplied \emph{params} are valid ModVege parameters and,
 if requested, check that all required parameters are present.
 Issues a warning for any invalid parameters and throws an error if
 completeness is not satisfied (only when \code{check_for_completeness =  TRUE}).
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{ModvegeParameters$check_parameters(param_names, check_for_completeness = FALSE)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{ModvegeParameters$check_parameters(param_names, check_for_completeness = TRUE)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
@@ -221,9 +236,10 @@ completeness is not satisfied (only when \code{check_for_completeness =  TRUE}).
 \item{\code{param_names}}{A list of parameter names to be checked.}
 
 \item{\code{check_for_completeness}}{Boolean Toggle whether only the
-validity of supplied \emph{param_names} is checked (default) or whether we
-require all parameters to be present. In the latter case, if any
-parameter is missing, an error is thrown.}
+validity of supplied \emph{param_names} is checked or whether we
+want to check that all required parameters to be present
+(default). In the latter case, if any required parameter is
+missing, an error is thrown.}
 }
 \if{html}{\out{</div>}}
 }

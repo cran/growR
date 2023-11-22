@@ -1,4 +1,4 @@
-## ---- include = FALSE---------------------------------------------------------
+## ----include = FALSE----------------------------------------------------------
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
@@ -6,7 +6,7 @@ knitr::opts_chunk$set(
   fig.width = 8
 )
 
-## ---- include = FALSE---------------------------------------------------------
+## ----include = FALSE----------------------------------------------------------
 # Store the original wd
 original_dir = getwd()
 
@@ -15,7 +15,7 @@ working_dir = file.path(tempdir(), "growR_tutorial")
 dir.create(working_dir)
 setwd(working_dir)
 
-## ---- include = FALSE---------------------------------------------------------
+## ----include = FALSE----------------------------------------------------------
 # knitr resets working dir to root.dir after every chunk.
 # This makes sure we stay in working_dir
 knitr::opts_knit$set(
@@ -34,8 +34,7 @@ environments = read_config("example_config.txt")
 
 ## ----run_simulation-----------------------------------------------------------
 results = growR_run_loop(environments, 
-                         output_dir = file.path(working_dir, "output"), 
-                         store_results = TRUE)
+                         output_dir = file.path(working_dir, "output"))
 
 ## ----print_results------------------------------------------------------------
 # Just print the first years of the first run (i.e. year 2013 at site Sorens)
@@ -44,7 +43,7 @@ results[[1]][[1]]
 ## ----plot_results-------------------------------------------------------------
 results[[1]][[1]]$plot()
 
-## ---- include = FALSE---------------------------------------------------------
+## ----include = FALSE----------------------------------------------------------
 # Simulate the changes made through a config file.
 env0 = environments[[1]]$clone()
 env0$years = 2013
@@ -55,14 +54,14 @@ env2$parameters$set_parameters(list(NI = 1.0))
 new_envs = c(env0, env1, env2)
 
 ## ----ni_screening-------------------------------------------------------------
-new_results = growR_run_loop(new_envs, store_results = TRUE)
+new_results = growR_run_loop(new_envs)
 # Plot all results
 for (run in new_results) {
   print(run[[1]]$parameters$NI)
   run[[1]]$plot()
 }
 
-## ---- include = FALSE---------------------------------------------------------
+## ----include = FALSE----------------------------------------------------------
 # Clean up
 knitr::opts_knit$set(
   root.dir = original_dir

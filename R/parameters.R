@@ -1,54 +1,59 @@
 # Define the names of the variables in the model. This is also used for a 
 # sanity check of the supplied input.
-initial_condition_names = c(
-  "AgeGV",
-  "AgeGR",
-  "AgeDV",
-  "AgeDR",
-  "BMGV",
-  "BMGR",
-  "BMDV",
-  "BMDR",
-  "SENGV",
-  "SENGR",
-  "ABSDV",
-  "ABSDR",
-  "ST",
-  "cBM"
+initial_conditions = list(
+  AgeGV = 100,
+  AgeGR = 2000,
+  AgeDV = 500,
+  AgeDR = 500,
+  BMGV = 420,
+  BMGR = 0,
+  BMDV = 300,
+  BMDR = 30,
+  SENGV = 0,
+  SENGR = 0,
+  ABSDV = 0,
+  ABSDR = 0,
+  ST = 0,
+  cBM = 0
 )
-parameter_names = c(
-  "LAT",
-  "LON",
-  "ELV",
-  "WHC",
-  "NI",
-  "w_FGA",
-  "w_FGB",
-  "w_FGC",
-  "w_FGD",
-  "RUEmax",
-  "sigmaGV",
-  "sigmaGR",
-  "T0",
-  "T1",
-  "T2",
-  "KGV",
-  "KGR",
-  "KlDV",
-  "KlDR",
-  "OMDDV",
-  "OMDDR",
-  "CO2_growth_factor"
+required_parameters = list(
+  WHC = NA,
+  NI = NA,
+  w_FGA = NA,
+  w_FGB = NA,
+  w_FGC = NA,
+  w_FGD = NA
+)
+parameter_defaults = list(
+  LAT = NA,
+  LON = NA,
+  ELV = NA,
+  RUEmax = 3,
+  sigmaGV = 0.4,
+  sigmaGR = 0.2,
+  T0 = 5,
+  T1 = 10,
+  T2 = 20,
+  KGV = 0.002,
+  KGR = 0.001,
+  KlDV = 0.001,
+  KlDR = 0.0005,
+  OMDDV = 0.45,
+  OMDDR = 0.4,
+  CO2_growth_factor = 0.5,
+  crop_coefficient = 1.15,
+  senescence_cap = 0.7
 )
 # Create a list that can be inserted into R6 class to create many fields
-all_parameter_names = c(initial_condition_names, parameter_names)
-parameters = as.list(all_parameter_names)
-names(parameters) = all_parameter_names
-sapply(all_parameter_names, function(p) {parameters[[p]] = NA})
-# Same procedure for functional group parameters
-fg_parameters = as.list(FG_A$fg_parameter_names)
-names(fg_parameters) = FG_A$fg_parameter_names
-sapply(FG_A$fg_parameter_names, function(p) {fg_parameters[[p]] = NA})
+initial_condition_names = names(initial_conditions)
+parameter_names = names(parameter_defaults)
+required_parameter_names = names(required_parameters)
+all_parameter_names = c(initial_condition_names, parameter_names, 
+                        required_parameter_names)
+parameters = c(initial_conditions, parameter_defaults, required_parameters)
+# Similar procedure for functional group parameters, using the values of FG_A as 
+# defaults.
+fg_parameters = FG_A$get_parameters()
 # Similar procedure for initial_conditions:
 # For each value that needs to be stored as an initial condition, create a 
 # copy of the variable with an appended "0" to the variable name.
@@ -56,7 +61,7 @@ initial_condition_values = list()
 for (i_param in 1:length(initial_condition_names)) {
   old_name = initial_condition_names[i_param]
   new_name = paste0(old_name, "0")
-  initial_condition_values[[new_name]] = NA
+  initial_condition_values[[new_name]] = initial_conditions[[old_name]]
 }
 for (name in c("WR0", "OMDGV0", "OMDGR0")) {
   initial_condition_values[[name]] = NA
@@ -101,16 +106,23 @@ ModvegeParameters = R6Class(
 
     list(
       #-Public-attributes-----------------------------------------------------------
-#' @field parameter_names Names of all parameters and state variables.
+#' @field required_parameter_names Names of parameters that do not have a 
+#'   default value and are therefore strictly required.
+      required_parameter_names = required_parameter_names,
+#' @field parameter_names Names of all required and optional parameters and 
+#'   state variables.
       parameter_names = all_parameter_names,
 #' @field n_parameters Number of total parameters.
-      n_parameters = length(parameter_names),
+      n_parameters = length(all_parameter_names),
 #' @field functional_group The [FunctionalGroup] instance holding the 
 #'   vegetation parameters.
       functional_group = NULL,
 #' @field fg_parameter_names Names of vegetation parameters defined by the 
 #'   functional group composition.
       fg_parameter_names = NULL,
+#' @field initial_condition_names Names of initial conditions.
+      initial_condition_names = c(initial_condition_names, 
+                                  "WHC", "maxOMDGV", "maxOMDGR"),
 #' @field param_file Name of the parameter file from which initial parameter 
 #'   values were read.
       param_file = NULL,
@@ -172,17 +184,7 @@ ModvegeParameters = R6Class(
         # Update the functional group parameters in P.
         self$update_functional_group()
 
-        # Set initial conditions
-        for (name in initial_condition_names) {
-          old_name = name
-          new_name = paste0(old_name, "0")
-          self[[new_name]] = self[[old_name]]
-        }
-
-        # Set some more initial values 
-        self[["WR0"]] = self[["WHC"]]
-        self[["OMDGV0"]] = self[["maxOMDGV"]]
-        self[["OMDGR0"]] = self[["maxOMDGR"]]
+        private$update_initial_conditions()
       },
 
       #' @description Savely update the given parameters
@@ -198,10 +200,16 @@ ModvegeParameters = R6Class(
         for (i in 1:length(params)) {
           name = param_names[[i]]
           self[[name]] = params[[i]]
+          # :TODO: Also update initial values XXX0.
         }
         # Check if FG composition needs to be updated
         if (any(param_names %in% c("w_FGA", "w_FGB", "w_FGC", "w_FGD"))) {
           self$update_functional_group()
+        }
+
+        # Check if initial conditions need updating
+        if (any(param_names %in% self$initial_condition_names)) { 
+          private$update_initial_conditions()
         }
       },
 
@@ -223,8 +231,8 @@ ModvegeParameters = R6Class(
         }
       },
 
-      #' @description Parameter Sanity Check
-      #'
+      #' @description 
+      #' Parameter Sanity Check
       #' Ensure that the supplied *params* are valid ModVege parameters and, 
       #' if requested, check that all required parameters are present.
       #' Issues a warning for any invalid parameters and throws an error if 
@@ -233,35 +241,59 @@ ModvegeParameters = R6Class(
       #' 
       #' @param param_names A list of parameter names to be checked.
       #' @param check_for_completeness Boolean Toggle whether only the 
-      #'   validity of supplied *param_names* is checked (default) or whether we 
-      #'   require all parameters to be present. In the latter case, if any 
-      #'   parameter is missing, an error is thrown.
+      #'   validity of supplied *param_names* is checked or whether we 
+      #'   want to check that all required parameters to be present 
+      #'   (default). In the latter case, if any required parameter is 
+      #'   missing, an error is thrown.
       #' @return not_known The list of unrecognized parameter names.
       #'
       #' @md
-      check_parameters = function(param_names, check_for_completeness = FALSE) {
+      check_parameters = function(param_names, check_for_completeness = TRUE) {
+        # Check for duplicate param names
+        if (length(param_names) != length(unique(param_names))) {
+          logger("Non-unique parameter names in supplied parameters.",
+                 level = ERROR)
+        }
+        param_file = self$param_file
+        if (check_for_completeness) {
+          # Give error if an argument is missing.
+          not_present = setdiff(self$required_parameter_names, param_names)
+          if (length(not_present) != 0 ) {
+            # Construct the error message.
+            missing_args = paste(not_present, collapse = "\n")
+            msg = paste("The following parameters were missing",
+                        "from the supplied input file (%s):\n%s")
+            logger(sprintf(msg, param_file, missing_args), level = ERROR)
+          }
+        }
+
         not_known = setdiff(param_names, self$parameter_names)
         # Warn if some arguments were not recognized.
         if (length(not_known) != 0) {
           unknown_args = paste(not_known, collapse = "\n")
-          message = paste("The following unrecognized parameters were present",
-                            "in the supplied input file (%s):\n%s")
-          logger(sprintf(message, param_file, unknown_args), level = WARNING)
-        }
-        if (check_for_completeness) {
-          # Give error if an argument is missing.
-          not_present = setdiff(self$parameter_names, param_names)
-          if (length(not_present) != 0 ) {
-            # Construct the error message.
-            missing_args = paste(not_present, collapse = "\n")
-            message = paste("The following parameters were missing",
-                            "from the supplied input file (%s):\n%s")
-            logger(sprintf(message, param_file, missing_args), level = ERROR)
-          }
+          msg = paste("The following unrecognized parameters were present",
+                      "in the supplied input file (%s):\n%s")
+          logger(sprintf(msg, param_file, unknown_args), level = WARNING)
         }
         return(not_known)
       }
     )
+  ),
+
+  private = list(
+    ## Set initial conditions
+    update_initial_conditions = function() {
+      for (name in initial_condition_names) {
+        old_name = name
+        new_name = paste0(old_name, "0")
+        self[[new_name]] = self[[old_name]]
+      }
+
+      # Set some more initial values 
+      self[["WR0"]] = self[["WHC"]]
+      self[["OMDGV0"]] = self[["maxOMDGV"]]
+      self[["OMDGR0"]] = self[["maxOMDGR"]]
+    }
   )
 )
 

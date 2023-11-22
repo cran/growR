@@ -10,13 +10,14 @@
 #' the *N* years.
 #'
 #' # Weather inputs
-#' The weather input file should be organized as 10 space separated columns 
-#' with the following parameters as headers:
+#' The weather input file should be organized as space separated columns 
+#' with a `year` column and at least the following parameters as headers 
+#' (further columns are ignored):
 #'
 #' ```{r child = "vignettes/children/weather_parameters.Rmd"}
 #' ```
 #'
-#' These parameters are stored in this object in the respective PARAM_vec 
+#' These parameters are stored in this object in the respective `PARAM_vec` 
 #' fields.
 #' 
 #' @field weather_file Name of provided weather data file.
@@ -30,12 +31,8 @@
 #'   - aCO2 (atmospheric CO2 concentration in ppm)
 #'   - year
 #'   - DOY
-#'   - DL (day length **unused**)
 #'   - Ta
 #'   - Ta_sm (smoothed daily average temperature)
-#'   - Tn
-#'   - Tn_sm (smoothed daily minimum temperature)
-#'   - Tx
 #'   - PAR
 #'   - PP
 #'   - PET
@@ -60,14 +57,10 @@ WeatherData = R6Class(
     year_vec = NULL,
     DOY_vec = NULL,
     Ta_vec = NULL,
-    Tn_vec = NULL,
-    Tx_vec = NULL,
     PP_vec = NULL,
-    SRad_vec = NULL,
     PAR_vec = NULL,
     PET_vec = NULL,
     vec_size = NULL,
-    Tn_smooth = NULL,
     Ta_smooth = NULL,
     W = NULL,
 
@@ -94,8 +87,8 @@ WeatherData = R6Class(
     #'   Default (NULL) is to read in all found years.
     #'
     read_weather = function(weather_file, years = NULL) {
-      self$years = years
       self$weather_file = weather_file
+      self$years = years
       # Load weather data
       if (file.exists(weather_file)) {
         logger(sprintf("Loading weather data from %s.", weather_file), 
@@ -104,8 +97,7 @@ WeatherData = R6Class(
         stop(sprintf("Weather file `%s` not found.", weather_file))
       }
       weather = read.table(weather_file, header = TRUE)
-      # Hard fix NA values
-      weather[is.na(weather)] = 0.0
+      weather = self$ensure_file_integrity(weather)
 
       # Only consider relevant years and omit leap days
       selector = weather$DOY < 366
@@ -125,34 +117,18 @@ WeatherData = R6Class(
       year_vec = weather$year[selector]
       DOY_vec  = weather$DOY[selector]
       Ta_vec   = weather$Ta[selector]
-      Tn_vec   = weather$Tmin[selector]
-      Tx_vec   = weather$Tmax[selector]
       PP_vec   = weather$precip[selector]
-      SRad_vec = weather$SRad[selector]
-      # Factor 0.47?
-      PAR_vec  = SRad_vec * 0.47 * 86400 / 1e6
+      PAR_vec  = weather$PAR[selector]
       PET_vec  = weather$ET0[selector]
       vec_size = length(year_vec)
 
       #-Tweaks,-corrections-and-further-weather-variables-----------------------
 
-      # Apply a crop coefficient of 1.15
-      Kc = 1.15
-      PET_vec = PET_vec * Kc
-
-      # Apply a temperature correction
-      dTc = 1.2
-      Ta_vec = Ta_vec + dTc
-      Tn_vec = Tn_vec + dTc
-      Tx_vec = Tx_vec + dTc
-
       # Smooth time series of air temperature, as needed to determine the 
       # start of the growing season.
-      Tn_smooth = numeric(vec_size)
       Ta_smooth = numeric(vec_size)
       weather_smooth_window = 6
       for (k in 1:vec_size) {
-        Tn_smooth[k] = mean(Tn_vec[max(1,(k - weather_smooth_window)):k])
         Ta_smooth[k] = mean(Ta_vec[max(1,(k - weather_smooth_window)):k])
       }
 
@@ -196,15 +172,27 @@ WeatherData = R6Class(
       self[["year_vec"]] = year_vec
       self[["DOY_vec"]]  = DOY_vec
       self[["Ta_vec"]]   = Ta_vec
-      self[["Tn_vec"]]   = Tn_vec
-      self[["Tx_vec"]]   = Tx_vec
       self[["PP_vec"]]   = PP_vec
-      self[["SRad_vec"]] = SRad_vec
       self[["PAR_vec"]]  = PAR_vec
       self[["PET_vec"]]  = PET_vec
       self[["vec_size"]] = vec_size
-      self[["Tn_smooth"]] = Tn_smooth
       self[["Ta_smooth"]] = Ta_smooth
+    },
+
+    #' @description Check if supplied input file is formatted correctly.
+    #'
+    #' Check if required column names are present and fix NA entries.
+    #'
+    #' @param weather data.table of the read input file with `header = TRUE`.
+    #'
+    ensure_file_integrity = function(weather) {
+      required = c("year", "DOY", "Ta", "precip", "PAR", "ET0")
+      data_name = sprintf("the supplied weather file `%s`", self$weather_file)
+      ensure_table_columns(required, weather, data_name = data_name)
+
+      # Hard fix NA values
+      weather[is.na(weather)] = 0.0
+      return(weather)
     },
 
     #' @description Calculate the expected length of day based on a site's 
@@ -244,6 +232,9 @@ WeatherData = R6Class(
     #' year and return them as a list.
     #'
     #' @param year integer Year for which to extract weather data.
+    #' @return W List containing the keys aCO2, year, DOY, Ta, Ta_sm, PAR, 
+    #'   PP, PET, liquidP, melt, snow, ndays.
+    #'
     get_weather_for_year = function(year) {
       iW = which(self$year_vec == year)
       if (!any(iW)) {
@@ -254,20 +245,15 @@ WeatherData = R6Class(
       W[["aCO2"]]  = atmospheric_CO2(year)
       W[["year"]]  = self$year_vec[iW]
       W[["DOY"]]   = self$DOY_vec[iW]
-      # DL appears to be unused.
-      W[["DL"]]    = self$day_length_vec[iW]
       W[["Ta"]]    = self$Ta_vec[iW]
       W[["Ta_sm"]] = self$Ta_smooth[iW]
-      W[["Tn"]]    = self$Tn_vec[iW]
-      W[["Tn_sm"]] = self$Tn_smooth[iW]
-      W[["Tx"]]    = self$Tx_vec[iW]
       W[["PAR"]]   = self$PAR_vec[iW]
       W[["PP"]]    = self$PP_vec[iW]
       W[["PET"]]   = self$PET_vec[iW]
       W[["liquidP"]] = self$liquidP_vec[iW]
       W[["melt"]]  = self$melt_vec[iW] 
       W[["snow"]]  = self$snow_vec[iW]
-      W[["ndays"]] = length(self[["year"]])
+      W[["ndays"]] = length(W[["year"]])
 
       self[["W"]] = W
       return(W)
