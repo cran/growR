@@ -41,7 +41,7 @@ results = growR_run_loop(environments,
 results[[1]][[1]]
 
 ## ----plot_results-------------------------------------------------------------
-results[[1]][[1]]$plot()
+results[[1]][[1]]$plot_bm()
 
 ## ----include = FALSE----------------------------------------------------------
 # Simulate the changes made through a config file.

@@ -360,6 +360,14 @@ SEN<sub>i</sub><sup>max</sup> = c<sub>s</sub> GRO<sub>i</sub> for
 <em>i</em> in <em>GV</em>, <em>GR</em>. Makes it less likely for grass
 population to die out. Can be set to large values in order to
 effectively disable senescence capping.</p></li>
+<li><p><code>stubble_height</code> float. Minimum height the grass can
+assume. The biomass will not fall below that height. This effectively
+presents a simple model of <em>plant reserves</em>.</p></li>
+<li><p><code>SGS_method</code> string. Choice of method to determine the
+start of the growing season. Can be either <code>&quot;MTD&quot;</code> for the
+multicriterial thermal definition (see [start_of_growing_season_mtd()])
+or <code>&quot;simple&quot;</code> for a commonly used approach as described in
+[start_of_growing_season()]).</p></li>
 </ul>
 </div>
 <div id="functional-group-parameters" class="section level3">
